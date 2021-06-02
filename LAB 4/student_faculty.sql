@@ -1,44 +1,23 @@
-CREATE DATABASE student_faculty;
-USE student_faculty;
-CREATE TABLE student(
-	snum INT,
-	sname VARCHAR(10),
-	major VARCHAR(2),
-	lvl VARCHAR(2),
-	age INT, primary key(snum));
-    
-CREATE TABLE faculty(
-	fid INT,fname VARCHAR(20),
-	deptid INT,
-    PRIMARY KEY(fid));
-    
-CREATE TABLE class(
-	cname VARCHAR(20),
-	metts_at TIMESTAMP,
-	room VARCHAR(10),
-    fid INT,
-	PRIMARY KEY(cname),
-	FOREIGN KEY(fid) REFERENCES faculty(fid));
-    
-CREATE TABLE enrolled(
-	snum INT,
-	cname VARCHAR(20),
-	PRIMARY KEY(snum,cname),
-	FOREIGN KEY(snum) REFERENCES student(snum),
-	FOREIGN KEY(cname) REFERENCES class(cname));
-    
-INSERT INTO STUDENT VALUES(1, 'jhon', 'CS', 'Sr', 19);
-INSERT INTO STUDENT VALUES(2, 'Smith', 'CS', 'Jr', 20);
-INSERT INTO STUDENT VALUES(3 , 'Jacob', 'CV', 'Sr', 20);
-INSERT INTO STUDENT VALUES(4, 'Tom ', 'CS', 'Jr', 20);
-INSERT INTO STUDENT VALUES(5, 'Rahul', 'CS', 'Jr', 20);
-INSERT INTO STUDENT VALUES(6, 'Rita', 'CS', 'Sr', 21);
+create database studentfaculty;
+use studentfaculty;
 
-INSERT INTO FACULTY VALUES(11, 'Harish', 1000);
-INSERT INTO FACULTY VALUES(12, 'MV', 1000);
-INSERT INTO FACULTY VALUES(13 , 'Mira', 1001);
-INSERT INTO FACULTY VALUES(14, 'Shiva', 1002);
-INSERT INTO FACULTY VALUES(15, 'Nupur', 1000);
+create table student(snum int , sname varchar(20) , major varchar(10) , lvl varchar(5) , age int , primary key(snum));
+create table faculty(fid int , fname varchar(20) , deptid int , primary key(fid));
+create table class(cname varchar(10) , meets_at timestamp , room varchar(10) , fid int , primary key(cname) , foreign key(fid) references faculty(fid));
+create table enrolled(snum int , cname varchar(10) , foreign key(snum) references student(snum) , foreign key(cname) references class(cname));
+
+insert into student values(1, 'John', 'CS', 'Sr', 19);
+insert into student values(2, 'Smith', 'CS', 'Jr', 20);
+insert into student values(3 , 'Jacob', 'CV', 'Sr', 20);
+insert into student values(4, 'Tom ', 'CS', 'Jr', 20);
+insert into student values(5, 'Rahul', 'CS', 'Jr', 20);
+insert into student values(6, 'Rita', 'CS', 'Sr', 21);
+
+insert into faculty values(11, 'Harish', 1000);
+insert into faculty values(12, 'MV', 1000);
+insert into faculty values(13 , 'Mira', 1001);
+insert into faculty values(14, 'Shiva', 1002);
+insert into faculty values(15, 'Nupur', 1000);
 
 insert into class values('class1', '12/11/15 10:15:16', 'R1', 14);
 insert into class values('class10', '12/11/15 10:15:16', 'R128', 14);
@@ -60,61 +39,23 @@ insert into enrolled values(3, 'class5');
 insert into enrolled values(4, 'class5');
 insert into enrolled values(5, 'class5');
 
+select * from student;
+select * from faculty;
+select * from class;
+select * from enrolled;
 
--- Query 1 
-SELECT DISTINCT S.Sname
-FROM Student S, Class C, Enrolled E, Faculty F
-WHERE S.snum = E.snum AND E.cname = C.cname AND C.fid = F.fid AND
-F.fname = 'Harish' AND S.lvl = 'Jr';
+select s.sname from student s , faculty f , class c , enrolled e where s.snum = e.snum and f.fid = c.fid and e.cname = c.cname and f.fname = 'Harish' and s.lvl = 'Jr';
 
--- Query 2
-SELECT DISTINCT cname
-	FROM class
-	WHERE room='R128'
-	OR
-	cname IN (SELECT e.cname FROM enrolled e GROUP BY e.cname HAVING COUNT(*)>=5);
-    
-    
+select c.cname from class c where room='R128' or c.cname in (select e.cname from enrolled e group by e.cname having count(e.cname)>=5);
 
--- Query 3
-SELECT DISTINCT S.sname
-FROM Student S
-WHERE S.snum IN (SELECT E1.snum
-			FROM Enrolled E1, Enrolled E2, Class C1, Class C2
-			WHERE E1.snum = E2.snum AND E1.cname <> E2.cname
-			AND E1.cname = C1.cname
-			AND E2.cname = C2.cname AND C1.metts_at = C2.metts_at);
-            
--- Query 4
-SELECT f.fname,f.fid
-			FROM faculty f
-	     	WHERE f.fid in ( SELECT fid FROM class
-			GROUP BY fid HAVING COUNT(*)=(SELECT COUNT(DISTINCT room) FROM class) );		
-            
--- Query 5
-SELECT DISTINCT F.fname
-FROM Faculty F
-WHERE 5 > (SELECT COUNT(E.snum)
-FROM Class C, Enrolled E
-WHERE C.cname = E.cname
-AND C.fid = F.fid);
+select distinct s.sname from student s where s.snum in (select e1.snum from enrolled e1 , enrolled e2 , class c1 , class c2 where e1.snum = e2.snum and e1.cname != e2.cname and e1.cname = c1.cname
+and e2.cname = c2.cname and c1.meets_at = c2.meets_at);
 
--- Query 6
-SELECT DISTINCT S.sname
-FROM Student S
-WHERE S.snum NOT IN (SELECT E.snum
-FROM Enrolled E );
+select distinct f.fname from faculty f where not exists((select c.room from class c where c.room not in (select c1.room from class c1 where c1.fid = f.fid)));
 
--- Query 7
-SELECT S.age, S.lvl
-FROM STUDENT S
-GROUP BY S.age, S.lvl
-HAVING S.lvl IN(SELECT S1.lvl
-	FROM STUDENT S1
-	WHERE S1.age=S.age
-	GROUP BY S1.age, S1.lvl
-	HAVING COUNT(*)  >= ALL (SELECT COUNT(*) 
-		FROM STUDENT S2
-		WHERE S1.age=S2.age
-		GROUP BY S2.lvl, S2.age))
-ORDER BY S.age;
+select distinct f.fname from faculty f left join class c on f.fid = c.fid where 5 > (select count(*) from enrolled e where e.cname = c.cname);
+
+select s.sname from student s where s.snum not in (select e.snum from enrolled e);
+
+select s.age , s.lvl from student s group by s.age , s.lvl having s.lvl in ( select s1.lvl from student s1 where s1.age = s.age group by s1.lvl , s1.age having count(*) >= all (select count(*) from
+student s2 where s1.age = s2.age group by s2.age , s2.lvl));
