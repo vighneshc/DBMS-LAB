@@ -1,79 +1,47 @@
-create database supplier;
-use supplier;
-create table suppliers(
-	sid int primary key,
-    sname varchar(30),
-    address varchar(30)
-);
-create table parts(
-	pid int primary key,
-    pname varchar(30),
-    color varchar(30)
-);
-create table catalog (
-	sid int ,
-    pid int ,
-    cost real,
-    constraint c_sid foreign key(sid) references suppliers(sid) ,
-    constraint c_pid foreign key(pid) references parts(pid)
-);
-insert into suppliers values(1,'Acme Widget','kolkata') ;
-insert into suppliers values(2,'Tata','bengaluru') ;
-insert into suppliers values(3,'Reebok','delhi') ;
-insert into suppliers values(4,'Nike','delhi') ;
-insert into suppliers values(5,'Reliance','delhi') ;
+create database supplierdatabase;
+use supplierdatabase;
 
+create table supplier(sid int , sname varchar(20) , address varchar(40) , primary key(sid));
+create table parts(pid int , pname varchar(30) , color varchar(15) , primary key(pid));
+create table catalog(sid int , pid int , cost real , foreign key(sid) references supplier(sid) , foreign key(pid) references parts(pid));
 
-insert into parts values(1,'paint','red') ;
-insert into parts values(2,'steel','black') ;
-insert into parts values(3,'spray','red') ;
-insert into parts values(4,'sheet','green');
-insert into parts values(5,'tiles','blue');
-delete from parts where pid=5;
+insert into supplier values(10001 , 'Acme Widget' , 'Bangalore');
+insert into supplier values(10002 , 'Johns' , 'Kolkata');
+insert into supplier values(10003 , 'Vimal' , 'Mumbai');
+insert into supplier values(10004 , 'Reliance' , 'Delhi');
 
-insert into catalog values(1,1,100);
-insert into catalog values(1,2,200);
-insert into catalog values(1,3,200);
-insert into catalog values(1,4,100);
-insert into catalog values(2,1,300);
-insert into catalog values(2,2,100);
-insert into catalog values(3,2,90);
-insert into catalog values(3,3,110);
-insert into catalog values(3,4,110);
-insert into catalog values(4,1,100);
-insert into catalog values(4,3,120);
-insert into catalog values(4,4,130);
+insert into parts values(20001 , 'Book' , 'Red');
+insert into parts values(20002 , 'Pen' , 'Red');
+insert into parts values(20003 , 'Pencil' , 'Green');
+insert into parts values(20004 , 'Mobile' , 'Red');
+insert into parts values(20005 , 'Charger' , 'Black');
 
-select * from catalog;
+insert into catalog values(10001,20001,10);
+insert into catalog values(10001,20002,10);
+insert into catalog values(10001,20003,30);
+insert into catalog values(10001,20004,10);
+insert into catalog values(10001,20005,10);
+insert into catalog values(10002,20001,10);
+insert into catalog values(10002,20002,20);
+insert into catalog values(10003,20003,30);
+insert into catalog values(10004,20003,40);
+
+select * from supplier;
 select * from parts;
+select * from catalog;
 
---      i. Find the pnames of parts for which there is some supplier.
-insert into parts values(5,'tiles','blue');
-select p.pname from parts p where p.pid in (select pid from catalog c group by c.pid having count(c.sid)>0);
-insert into catalog values(1,5,140);
-select p.pname from parts p where p.pid in (select pid from catalog c group by c.pid having count(c.sid)>0);
-delete from catalog where pid=5;
-delete from parts where pid=5;
+select pname from parts where parts.pid in (select pid from catalog);
 
--- ii. Find the snames of suppliers who supply every part. 
-select s.sname from suppliers s where s.sid in (select c.sid from catalog c group by c.sid having count(distinct (c.pid))=(select count(p.pid) from parts p));
+select sname from supplier s where ((select count(*) from catalog where catalog.sid = s.sid) = (select count(*) from parts));
 
--- iii. Find the snames of suppliers who supply every red part.
-select s.sname from suppliers s where s.sid in (select ca.sid  from catalog ca,parts p where ca.pid=p.pid and p.color='red' group by ca.sid having count(ca.pid)=(select count(*) from parts p where p.color='red'));
+select s.sname from supplier s where exists ((select p.pid from parts p where p.color = 'Red' and p.pid in (select c.pid from catalog c,parts p where c.sid=s.sid and c.pid=p.pid and p.color='Red')));
 
--- iv. Find the pnames of parts supplied by Acme Widget Suppliers and by no one else.
-select ca.pid from catalog ca  where ca.sid=(select s.sid from suppliers s where s.sname ='Acme Widget') having (select count(c.pid) from catalog c where c.pid=ca.pid)=1;
+select p.pname from parts p, supplier s where s.sname = 'Acme Widget' and p.pname not in (select p1.pname from parts p1 , supplier s1 , catalog c where s1.sname!='Acme Widget' and p1.pid=c.pid and s1.sid=c.sid);
 
--- v. Find the sids of suppliers who charge more for some part than the average cost of that part (averaged over
--- all the suppliers who supply that part).
-select distinct c.sid,c.pid from catalog c where c.cost > (select avg(ca.cost) from catalog ca where ca.pid=c.pid);
+select c.sid from catalog c where c.cost > (select avg(cost) from catalog where pid = c.pid);
 
--- vi. For each part, find the sname of the supplier who charges the most for that part.
-select s.sname from suppliers s where s.sid in (select c.sid from catalog c where c.cost=(select max(cost) from catalog ca where ca.pid=c.pid));
+select p.pid , s.sname from parts p , supplier s , catalog c where p.pid = c.pid and s.sid = c.sid and c.cost = (select max(cost) from catalog where pid = p.pid);
 
--- vii. select supplier who sell only red parts 
-select s.sname from suppliers s where s.sid in(select c.sid from catalog c where c.sid not in (select distinct(ca.sid) from catalog ca,parts p where ca.pid=p.pid and p.color!='red'));
-insert into catalog values(5,1,140); 
-select s.sname from suppliers s where s.sid in(select c.sid from catalog c where c.sid not in (select distinct(ca.sid) from catalog ca,parts p where ca.pid=p.pid and p.color!='red'));
-delete from catalog where sid=5;
-© 2021 GitHub, Inc.
+select distinct s.sid from supplier s , parts p , catalog c where s.sid = c.sid and p.pid = c.pid and p.color = 'Red' and s.sid not in (select distinct s1.sid from supplier s1 , parts p1 , catalog c1 where s1.sid = c1.sid and p1.pid = c1.pid and p1.color != 'Red');
+
+commit;
